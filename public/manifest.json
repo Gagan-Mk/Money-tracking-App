@@ -1,0 +1,9 @@
+{
+  "name": "Ruchi Vana Ledger",
+  "short_name": "RV Ledger",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#1B1A17",
+  "theme_color": "#1B1A17",
+  "icons": []
+}
