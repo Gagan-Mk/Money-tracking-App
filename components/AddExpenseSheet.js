@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 
 function todayISO() {
   const d = new Date();
@@ -10,6 +10,7 @@ function todayISO() {
 
 export default function AddExpenseSheet({ people }) {
   const router = useRouter();
+  const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -57,7 +58,11 @@ export default function AddExpenseSheet({ people }) {
       resetForm();
       setOpen(false);
       setSubmitting(false);
-      router.refresh();
+      if (pathname === '/') {
+        router.refresh();
+      } else {
+        router.push('/');
+      }
     } catch {
       setError('Could not reach the server. Try again.');
       setSubmitting(false);

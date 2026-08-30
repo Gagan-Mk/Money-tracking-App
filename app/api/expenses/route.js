@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { supabaseAdmin } from '../../../lib/supabaseAdmin';
 import { getSession } from '../../../lib/session';
 
@@ -63,5 +64,68 @@ export async function POST(request) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
+  revalidatePath('/');
+  revalidatePath('/ledger');
+
   return NextResponse.json({ expense: data }, { status: 201 });
+}
+
+export async function PATCH(request) {
+  const session = await getSession();
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const body = await request.json();
+  const { id, name, amount, paid_by, settled, expense_date, note } = body;
+
+  if (!id) {
+    return NextResponse.json({ error: 'Expense id is required.' }, { status: 400 });
+  }
+  if (!name || !amount || !paid_by || !expense_date) {
+    return NextResponse.json({ error: 'Missing required fields.' }, { status: 400 });
+  }
+  if (Number(amount) <= 0) {
+    return NextResponse.json({ error: 'Amount must be greater than zero.' }, { status: 400 });
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from('expenses')
+    .update({
+      name: name.trim(),
+      amount: Number(amount),
+      paid_by,
+      settled: !!settled,
+      expense_date,
+      note: note ? note.trim() : null,
+      created_by: session.personId,
+    })
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  revalidatePath('/');
+  revalidatePath('/ledger');
+
+  return NextResponse.json({ expense: data }, { status: 200 });
+}
+
+export async function DELETE(request) {
+  const session = await getSession();
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const body = await request.json();
+  const { id } = body;
+
+  if (!id) {
+    return NextResponse.json({ error: 'Expense id is required.' }, { status: 400 });
+  }
+
+  const { error } = await supabaseAdmin.from('expenses').delete().eq('id', id);
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  revalidatePath('/');
+  revalidatePath('/ledger');
+
+  return NextResponse.json({ ok: true }, { status: 200 });
 }

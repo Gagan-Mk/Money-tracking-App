@@ -24,15 +24,19 @@ export default function BottomNav() {
         {tabs.map((tab) => {
           const active = pathname === tab.href;
           return (
-            <Link
+            <button
               key={tab.href}
-              href={tab.href}
+              type="button"
+              onClick={() => {
+                router.push(tab.href);
+                router.refresh();
+              }}
               className={`rounded-lg px-4 py-2 font-mono text-xs uppercase tracking-wide transition ${
                 active ? 'bg-canopy text-harvest' : 'text-husk'
               }`}
             >
               {tab.label}
-            </Link>
+            </button>
           );
         })}
         <button

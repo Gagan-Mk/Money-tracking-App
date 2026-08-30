@@ -1,5 +1,6 @@
 import { supabaseAdmin } from '../../lib/supabaseAdmin';
 import BottomNav from '../../components/BottomNav';
+import ExpenseRowActions from '../../components/ExpenseRowActions';
 import LedgerFilters from './LedgerFilters';
 
 export const dynamic = 'force-dynamic';
@@ -78,6 +79,7 @@ export default async function LedgerPage({ searchParams }) {
                     {e.settled ? 'Settled' : 'Deferred'}
                   </span>
                 </div>
+                <ExpenseRowActions expense={e} people={people || []} />
               </li>
             ))}
           </ul>
