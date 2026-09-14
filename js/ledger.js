@@ -1,7 +1,7 @@
-import { requireSession, getData, deleteExpense, peopleMap, logout } from './api.js';
-import { inr, fmtDay, fmtMonthYear, esc } from './format.js';
-import { effectiveShares } from './balances.js';
-import { initExpenseModal, openAddExpense, openEditExpense } from './add-expense.js';
+import { requireSession, getData, deleteExpense, peopleMap, logout } from './api.js?v=4';
+import { inr, fmtDay, fmtMonthYear, esc } from './format.js?v=4';
+import { effectiveShares } from './balances.js?v=4';
+import { initExpenseModal, openAddExpense, openEditExpense } from './add-expense.js?v=4';
 
 const round2 = (n) => Math.round(n * 100) / 100;
 

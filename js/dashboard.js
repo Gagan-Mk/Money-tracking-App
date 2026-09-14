@@ -1,7 +1,7 @@
-import { requireSession, getData, logout } from './api.js';
-import { computeBalances, monthTotal, balanceBreakdown } from './balances.js';
-import { inr, inrAbs, fmtDay, esc } from './format.js';
-import { initExpenseModal, openAddExpense } from './add-expense.js';
+import { requireSession, getData, logout } from './api.js?v=4';
+import { computeBalances, monthTotal, balanceBreakdown } from './balances.js?v=4';
+import { inr, inrAbs, fmtDay, esc } from './format.js?v=4';
+import { initExpenseModal, openAddExpense } from './add-expense.js?v=4';
 
 const els = {
   monthLabel: document.getElementById('month-label'),

@@ -3,9 +3,9 @@
 // The settlement-split preview is computed locally from the cached split
 // versions (no /api/split-preview round-trip).
 
-import { createExpense, updateExpense } from './api.js';
-import { shareForDate } from './balances.js';
-import { todayISO, esc } from './format.js';
+import { createExpense, updateExpense } from './api.js?v=4';
+import { shareForDate } from './balances.js?v=4';
+import { todayISO, esc } from './format.js?v=4';
 
 let modalEl = null;
 let bsModal = null;
