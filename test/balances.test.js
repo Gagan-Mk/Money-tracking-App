@@ -63,4 +63,37 @@ check('shareForDate excludes payer and matches the active split', () => {
   assert.equal(map.p_gagan, undefined);
 });
 
+check('effectiveShares splits a settled expense to who bore it', () => {
+  const e1 = data.expenses.find((e) => e.id === 'e1'); // 9000 paid by Gagan
+  const reps = data.repayments.filter((r) => r.expense_id === 'e1'); // Ankith 3150, Yashas 2700
+  const s = client.effectiveShares(e1, reps);
+  assert.equal(s.p_ankith, 3150);
+  assert.equal(s.p_yashas, 2700);
+  assert.equal(s.p_gagan, 3150); // 9000 - 3150 - 2700
+  const sum = Object.values(s).reduce((a, b) => a + b, 0);
+  assert.equal(Math.round(sum), 9000, 'shares reconcile to the full amount');
+});
+
+check('effectiveShares with no repayments = full amount to payer', () => {
+  const e2 = data.expenses.find((e) => e.id === 'e2'); // 30000 deferred, Gagan
+  const s = client.effectiveShares(e2, []);
+  assert.deepEqual(s, { p_gagan: 30000 });
+});
+
+check('balanceBreakdown matches computeBalances net (Gagan)', () => {
+  const b = client.balanceBreakdown('p_gagan', data.expenses, data.splitVersions, data.repayments);
+  assert.equal(b.paid, 30000); // only deferred pkg
+  assert.equal(b.owedShare, 34300); // 35% of 98000
+  assert.equal(b.net, -4300);
+  assert.equal(b.paidItems.length, 1);
+  assert.equal(b.shareItems.length, 4); // share of every deferred expense
+});
+
+check('balanceBreakdown for VG has no split share', () => {
+  const b = client.balanceBreakdown('p_vg', data.expenses, data.splitVersions, data.repayments);
+  assert.equal(b.net, 50000);
+  assert.equal(b.owedShare, 0);
+  assert.equal(b.shareItems.length, 0);
+});
+
 console.log(`\n${passed} checks passed.`);

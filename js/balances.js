@@ -90,6 +90,78 @@ export function shareForDate(splitVersions, date, amount, excludePersonId = null
     }));
 }
 
+// Effective amount each person actually bore for ONE expense, given its
+// repayments. The original payer bears (amount − sum of repayments); each
+// repayment amount is borne by whoever funded it (Vyuh Gravity when funded_by
+// is set, otherwise the founder who repaid their share). Used for the ledger's
+// per-person totals. Always sums back to the full amount.
+export function effectiveShares(expense, reps = []) {
+  const shares = {};
+  const total = Number(expense.amount);
+  let repaid = 0;
+  for (const r of reps) {
+    const bearer = r.funded_by || r.repaid_by;
+    const amt = Number(r.amount);
+    shares[bearer] = round2((shares[bearer] || 0) + amt);
+    repaid += amt;
+  }
+  shares[expense.paid_by] = round2((shares[expense.paid_by] || 0) + (total - repaid));
+  return shares;
+}
+
+// The transaction-level breakdown behind one person's "RV owes" balance:
+// the deferred expenses they paid, repayments they funded, and their split
+// share of every deferred expense. net = paid − owedShare (matches computeBalances).
+export function balanceBreakdown(personId, expenses, splitVersions, repayments = []) {
+  const sortedVersions = [...splitVersions].sort(
+    (a, b) => new Date(a.start_date) - new Date(b.start_date)
+  );
+  const deferred = expenses.filter((e) => !e.settled);
+
+  const paidItems = [];
+  const shareItems = [];
+  const fundedItems = [];
+  let paid = 0;
+  let owedShare = 0;
+
+  for (const e of deferred) {
+    if (e.paid_by === personId) {
+      paid += Number(e.amount);
+      paidItems.push({ id: e.id, name: e.name, date: e.expense_date, amount: Number(e.amount) });
+    }
+    const version = findApplicableVersion(sortedVersions, e.expense_date);
+    const share = version && version.shares.find((s) => s.person_id === personId);
+    if (share) {
+      const portion = (Number(e.amount) * Number(share.percentage)) / 100;
+      owedShare += portion;
+      shareItems.push({
+        id: e.id,
+        name: e.name,
+        date: e.expense_date,
+        amount: Number(e.amount),
+        pct: Number(share.percentage),
+        share: round2(portion),
+      });
+    }
+  }
+
+  for (const r of repayments || []) {
+    if (r.funded_by === personId) {
+      paid += Number(r.amount);
+      fundedItems.push({ amount: Number(r.amount), date: r.repayment_date });
+    }
+  }
+
+  return {
+    paid: round2(paid),
+    owedShare: round2(owedShare),
+    net: round2(paid - owedShare),
+    paidItems,
+    shareItems,
+    fundedItems,
+  };
+}
+
 function round2(n) {
   return Math.round(n * 100) / 100;
 }

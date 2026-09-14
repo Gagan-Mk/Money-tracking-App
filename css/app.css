@@ -531,3 +531,48 @@
   width: 100%;
   max-width: 340px;
 }
+
+/* ---- Total to date (dashboard month card) ---- */
+.rv-alltime {
+  margin-top: 0.9rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid var(--bark);
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+.rv-alltime .rv-num {
+  font-size: 1.1rem;
+}
+
+/* ---- Clickable balance rows + detail modal ---- */
+.rv-balance-click {
+  cursor: pointer;
+  padding-inline: 0.2rem;
+  border-radius: 0.4rem;
+  transition: background 0.12s ease;
+}
+.rv-balance-click:hover,
+.rv-balance-click:focus-visible {
+  background: rgba(201, 162, 39, 0.1);
+  outline: none;
+}
+.rv-chevron {
+  color: var(--husk);
+  margin-left: 0.35rem;
+}
+.rv-detail-net {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+.rv-detail-formula {
+  color: var(--husk);
+  font-size: 0.85rem;
+  margin: 0.25rem 0 0;
+}
+
+/* ---- "their share" annotation in the ledger ---- */
+.rv-share-note {
+  color: var(--harvest);
+}

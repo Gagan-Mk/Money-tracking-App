@@ -1,6 +1,9 @@
 import { requireSession, getData, deleteExpense, peopleMap, logout } from './api.js';
 import { inr, fmtDay, fmtMonthYear, esc } from './format.js';
+import { effectiveShares } from './balances.js';
 import { initExpenseModal, openAddExpense, openEditExpense } from './add-expense.js';
+
+const round2 = (n) => Math.round(n * 100) / 100;
 
 const els = {
   paidBy: document.getElementById('f-paidby'),
@@ -34,10 +37,11 @@ function writeFilters(f) {
   history.replaceState(null, '', location.pathname + (p.toString() ? '?' + p.toString() : ''));
 }
 
-function applyFilters(expenses, f) {
+// Everything except the payer filter (payer is handled as a "true share"
+// calculation in buildRows, not a plain row filter).
+function applyBaseFilters(expenses, f) {
   const monthSet = new Set(f.months || []);
   return expenses.filter((e) => {
-    if (f.paid_by && e.paid_by !== f.paid_by) return false;
     if (f.settled === 'true' && !e.settled) return false;
     if (f.settled === 'false' && e.settled) return false;
     if (f.month) {
@@ -51,13 +55,23 @@ function applyFilters(expenses, f) {
   });
 }
 
-function groupByMonth(expenses) {
-  const groups = {};
-  for (const e of expenses) {
-    const label = fmtMonthYear(e.expense_date);
-    (groups[label] = groups[label] || []).push(e);
+// Turn filtered expenses into display rows. With no payer filter each row shows
+// the full amount. Filtered by a person, each row shows that person's TRUE
+// share of the expense (what they actually bore), including a share of an
+// expense someone else paid but they repaid.
+function buildRows(base, f, repByExp) {
+  if (!f.paid_by) {
+    return base.map((e) => ({ e, amount: Number(e.amount), full: Number(e.amount), isPayer: true }));
   }
-  return groups;
+  const rows = [];
+  for (const e of base) {
+    const shares = effectiveShares(e, repByExp[e.id] || []);
+    const amt = shares[f.paid_by];
+    if (amt && Math.abs(amt) > 0.005) {
+      rows.push({ e, amount: round2(amt), full: Number(e.amount), isPayer: e.paid_by === f.paid_by });
+    }
+  }
+  return rows;
 }
 
 function repaymentsByExpense(repayments) {
@@ -71,21 +85,28 @@ function render() {
   const people = peopleMap(data);
   const repByExp = repaymentsByExpense(data.repayments);
   const f = readFilters();
-  const filtered = applyFilters(data.expenses, f);
-  const total = filtered.reduce((s, e) => s + Number(e.amount), 0);
+  const base = applyBaseFilters(data.expenses, f);
+  const rows = buildRows(base, f, repByExp);
+  const total = rows.reduce((s, r) => s + r.amount, 0);
 
-  els.summary.textContent = `${filtered.length} expense${filtered.length === 1 ? '' : 's'} · ₹${inr(total)} total`;
+  const who = f.paid_by ? (people.get(f.paid_by)?.name || 'this person') + "'s share · " : '';
+  els.summary.textContent = `${who}${rows.length} expense${rows.length === 1 ? '' : 's'} · ₹${inr(total)} total`;
 
-  if (filtered.length === 0) {
+  if (rows.length === 0) {
     els.list.innerHTML = `<div class="rv-card rv-muted">No expenses match these filters.</div>`;
     return;
   }
 
-  const grouped = groupByMonth(filtered);
+  const grouped = {};
+  for (const r of rows) {
+    const label = fmtMonthYear(r.e.expense_date);
+    (grouped[label] = grouped[label] || []).push(r);
+  }
+
   els.list.innerHTML = Object.entries(grouped)
-    .map(([label, rows]) => {
-      const monthSum = rows.reduce((s, e) => s + Number(e.amount), 0);
-      const items = rows.map((e) => rowHTML(e, people, repByExp[e.id] || [])).join('');
+    .map(([label, grows]) => {
+      const monthSum = grows.reduce((s, r) => s + r.amount, 0);
+      const items = grows.map((r) => rowHTML(r, people, repByExp[r.e.id] || [], f)).join('');
       return `<section class="rv-group">
         <div class="rv-group-head">
           <p class="rv-group-label mb-0">${esc(label)}</p>
@@ -118,7 +139,8 @@ function render() {
   );
 }
 
-function rowHTML(e, people, reps) {
+function rowHTML(r, people, reps, f) {
+  const e = r.e;
   const payer = people.get(e.paid_by);
   const pill = e.settled
     ? `<span class="rv-pill rv-pill-settled">Settled</span>`
@@ -129,22 +151,30 @@ function rowHTML(e, people, reps) {
     repHTML =
       `<div class="rv-reps">` +
       reps
-        .map((r) => {
-          const who = people.get(r.repaid_by);
-          const via = r.funded_by ? (people.get(r.funded_by)?.name || 'Vyuh Gravity') : 'Personal';
-          return `<p class="rv-rep">${esc(who ? who.name : '—')} repaid ₹${inr(r.amount)} on ${fmtDay(r.repayment_date)} · via ${esc(via)}</p>`;
+        .map((rp) => {
+          const rpWho = people.get(rp.repaid_by);
+          const via = rp.funded_by ? (people.get(rp.funded_by)?.name || 'Vyuh Gravity') : 'Personal';
+          return `<p class="rv-rep">${esc(rpWho ? rpWho.name : '—')} repaid ₹${inr(rp.amount)} on ${fmtDay(rp.repayment_date)} · via ${esc(via)}</p>`;
         })
         .join('') +
       `</div>`;
   }
 
+  // When filtered by a person, show their true share of this expense.
+  let note = '';
+  if (f.paid_by) {
+    if (!r.isPayer) note = `their ₹${inr(r.amount)} share`;
+    else if (Math.round(r.amount) !== Math.round(r.full)) note = `their ₹${inr(r.amount)} of ₹${inr(r.full)}`;
+  }
+  const noteHTML = note ? ` · <span class="rv-share-note">${esc(note)}</span>` : '';
+
   return `<li class="rv-row-block">
     <div class="rv-row-line">
       <p class="rv-row-title mb-0">${esc(e.name)}</p>
-      <span class="rv-num">₹${inr(e.amount)}</span>
+      <span class="rv-num">₹${inr(r.amount)}</span>
     </div>
     <div class="rv-row-line rv-row-line-sub">
-      <p class="rv-row-sub mb-0">Paid by ${esc(payer ? payer.name : '—')}${e.note ? ' · ' + esc(e.note) : ''}</p>
+      <p class="rv-row-sub mb-0">Paid by ${esc(payer ? payer.name : '—')}${e.note ? ' · ' + esc(e.note) : ''}${noteHTML}</p>
       ${pill}
     </div>
     ${repHTML}
