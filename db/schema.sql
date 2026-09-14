@@ -26,9 +26,23 @@ create table expenses (
   created_at timestamptz not null default now()
 );
 
+create table repayments (
+  id uuid primary key default gen_random_uuid(),
+  expense_id uuid not null references expenses(id) on delete cascade,
+  repaid_by uuid not null references people(id),
+  amount numeric(12,2) not null check (amount > 0),
+  repayment_date date not null default current_date,
+  funded_by uuid references people(id),
+  note text,
+  created_at timestamptz not null default now()
+);
+
 create index expenses_date_idx on expenses (expense_date);
 create index expenses_paid_by_idx on expenses (paid_by);
 create index expenses_settled_idx on expenses (settled);
+create index repayments_expense_idx on repayments (expense_id);
+create index repayments_repaid_by_idx on repayments (repaid_by);
+create index repayments_funded_by_idx on repayments (funded_by);
 
 -- Backend-only split configuration. A new version can be added any time;
 -- it only applies to expenses dated on/after its start_date, so past
@@ -51,5 +65,6 @@ create table split_shares (
 -- with no public policies. Nothing is reachable directly from the browser.
 alter table people enable row level security;
 alter table expenses enable row level security;
+alter table repayments enable row level security;
 alter table split_versions enable row level security;
 alter table split_shares enable row level security;

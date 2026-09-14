@@ -4,8 +4,8 @@
 // Requires SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in your environment
 // (e.g. `export $(cat .env.local | xargs)` first, or use a tool like dotenv).
 
-const bcrypt = require('bcryptjs');
-const { createClient } = require('@supabase/supabase-js');
+import bcrypt from 'bcryptjs';
+import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = (process.env.SUPABASE_URL || '').replace(/\/rest\/v1\/?$/, '');
 const supabase = createClient(supabaseUrl, process.env.SUPABASE_SERVICE_ROLE_KEY);

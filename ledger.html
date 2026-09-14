@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en" data-bs-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#1B1A17" />
+    <title>Ruchi Vana — Ledger</title>
+    <link rel="manifest" href="manifest.json" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="css/theme.css?v=1" />
+    <link rel="stylesheet" href="css/app.css?v=2" />
+  </head>
+  <body>
+    <nav class="navbar navbar-expand-sm rv-navbar">
+      <div class="rv-navwrap d-flex flex-wrap align-items-center justify-content-between">
+        <a class="navbar-brand rv-brand" href="index.html">Ruchi Vana</a>
+        <button
+          class="navbar-toggler"
+          type="button"
+          data-bs-toggle="collapse"
+          data-bs-target="#rvNav"
+          aria-controls="rvNav"
+          aria-expanded="false"
+          aria-label="Toggle navigation"
+        >
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="rvNav">
+          <ul class="navbar-nav ms-auto align-items-sm-center gap-1">
+            <li class="nav-item">
+              <a class="nav-link rv-nav-link" href="index.html">Dashboard</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link rv-nav-link active" aria-current="page" href="ledger.html">Ledger</a>
+            </li>
+            <li class="nav-item">
+              <button id="logout-btn" class="nav-link rv-nav-link" type="button">Sign out</button>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </nav>
+
+    <main class="rv-wrap">
+      <header class="mb-3">
+        <p class="rv-eyebrow">Ruchi Vana</p>
+        <h1 class="rv-title rv-page-title">Ledger</h1>
+      </header>
+
+      <div class="rv-filters">
+        <select id="f-paidby" class="form-select" aria-label="Filter by payer">
+          <option value="">Anyone paid</option>
+        </select>
+        <select id="f-settled" class="form-select" aria-label="Filter by settled status">
+          <option value="">Settled + Deferred</option>
+          <option value="false">Deferred only</option>
+          <option value="true">Settled only</option>
+        </select>
+        <input id="f-month" type="month" class="form-control" aria-label="Filter by single month" />
+        <div class="dropdown rv-months-dd">
+          <button
+            id="f-months-btn"
+            class="form-select rv-months-toggle text-start"
+            type="button"
+            data-bs-toggle="dropdown"
+            data-bs-auto-close="outside"
+            aria-expanded="false"
+          >
+            All months
+          </button>
+          <div id="f-months-menu" class="dropdown-menu rv-months-menu" aria-labelledby="f-months-btn"></div>
+        </div>
+      </div>
+
+      <p class="rv-muted mt-3 mb-3" id="ledger-summary">Loading…</p>
+
+      <div id="ledger-list">
+        <div class="rv-card rv-card-pad rv-muted">Loading…</div>
+      </div>
+    </main>
+
+    <button class="rv-fab" data-action="add" aria-label="Add expense">+</button>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script type="module" src="js/ledger.js?v=2"></script>
+  </body>
+</html>

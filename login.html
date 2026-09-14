@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en" data-bs-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#1B1A17" />
+    <title>Ruchi Vana — Sign in</title>
+    <link rel="manifest" href="manifest.json" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="css/theme.css?v=1" />
+    <link rel="stylesheet" href="css/app.css?v=2" />
+  </head>
+  <body>
+    <main class="rv-login-wrap">
+      <div class="rv-login-card">
+        <div class="text-center mb-4">
+          <p class="rv-eyebrow">Ruchi Vana</p>
+          <h1 class="rv-title" style="font-size: 1.9rem">The Ledger</h1>
+        </div>
+
+        <form id="login-form" autocomplete="on">
+          <div class="mb-3">
+            <label class="rv-label" for="username">Username</label>
+            <input
+              id="username"
+              name="username"
+              type="text"
+              class="form-control"
+              autocapitalize="none"
+              autocorrect="off"
+              autocomplete="username"
+              required
+            />
+          </div>
+          <div class="mb-3">
+            <label class="rv-label" for="password">Password</label>
+            <input
+              id="password"
+              name="password"
+              type="password"
+              class="form-control"
+              autocomplete="current-password"
+              required
+            />
+          </div>
+
+          <div id="login-error" class="rv-error mb-3" hidden></div>
+
+          <button type="submit" id="login-submit" class="btn rv-btn-primary w-100">Sign in</button>
+        </form>
+      </div>
+    </main>
+
+    <script type="module" src="js/login.js?v=1"></script>
+  </body>
+</html>

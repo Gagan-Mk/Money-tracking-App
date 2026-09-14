@@ -1,0 +1,252 @@
+import { requireSession, getData, deleteExpense, peopleMap, logout } from './api.js';
+import { inr, fmtDay, fmtMonthYear, esc } from './format.js';
+import { initExpenseModal, openAddExpense, openEditExpense } from './add-expense.js';
+
+const els = {
+  paidBy: document.getElementById('f-paidby'),
+  settled: document.getElementById('f-settled'),
+  month: document.getElementById('f-month'),
+  summary: document.getElementById('ledger-summary'),
+  list: document.getElementById('ledger-list'),
+};
+
+// "YYYY-MM" key for an expense date (used by the multi-month filter + grouping).
+function monthKey(dateStr) {
+  const d = new Date(dateStr);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function readFilters() {
+  const p = new URLSearchParams(location.search);
+  return {
+    paid_by: p.get('paid_by') || '',
+    settled: p.get('settled') || '',
+    month: p.get('month') || '',
+    months: (p.get('months') || '').split(',').filter(Boolean),
+  };
+}
+
+function writeFilters(f) {
+  const p = new URLSearchParams(location.search);
+  ['paid_by', 'settled', 'month'].forEach((k) => (f[k] ? p.set(k, f[k]) : p.delete(k)));
+  if (f.months && f.months.length) p.set('months', f.months.join(','));
+  else p.delete('months');
+  history.replaceState(null, '', location.pathname + (p.toString() ? '?' + p.toString() : ''));
+}
+
+function applyFilters(expenses, f) {
+  const monthSet = new Set(f.months || []);
+  return expenses.filter((e) => {
+    if (f.paid_by && e.paid_by !== f.paid_by) return false;
+    if (f.settled === 'true' && !e.settled) return false;
+    if (f.settled === 'false' && e.settled) return false;
+    if (f.month) {
+      const [y, m] = f.month.split('-').map(Number);
+      const d = new Date(e.expense_date);
+      if (d.getFullYear() !== y || d.getMonth() + 1 !== m) return false;
+    }
+    // Multi-month filter (empty = all months)
+    if (monthSet.size && !monthSet.has(monthKey(e.expense_date))) return false;
+    return true;
+  });
+}
+
+function groupByMonth(expenses) {
+  const groups = {};
+  for (const e of expenses) {
+    const label = fmtMonthYear(e.expense_date);
+    (groups[label] = groups[label] || []).push(e);
+  }
+  return groups;
+}
+
+function repaymentsByExpense(repayments) {
+  const map = {};
+  for (const r of repayments || []) (map[r.expense_id] = map[r.expense_id] || []).push(r);
+  return map;
+}
+
+function render() {
+  const data = window.__RV_DATA;
+  const people = peopleMap(data);
+  const repByExp = repaymentsByExpense(data.repayments);
+  const f = readFilters();
+  const filtered = applyFilters(data.expenses, f);
+  const total = filtered.reduce((s, e) => s + Number(e.amount), 0);
+
+  els.summary.textContent = `${filtered.length} expense${filtered.length === 1 ? '' : 's'} · ₹${inr(total)} total`;
+
+  if (filtered.length === 0) {
+    els.list.innerHTML = `<div class="rv-card rv-muted">No expenses match these filters.</div>`;
+    return;
+  }
+
+  const grouped = groupByMonth(filtered);
+  els.list.innerHTML = Object.entries(grouped)
+    .map(([label, rows]) => {
+      const monthSum = rows.reduce((s, e) => s + Number(e.amount), 0);
+      const items = rows.map((e) => rowHTML(e, people, repByExp[e.id] || [])).join('');
+      return `<section class="rv-group">
+        <div class="rv-group-head">
+          <p class="rv-group-label mb-0">${esc(label)}</p>
+          <span class="rv-group-total rv-num">₹${inr(monthSum)}</span>
+        </div>
+        <ul class="rv-card rv-list">${items}</ul>
+      </section>`;
+    })
+    .join('');
+
+  // Wire per-row actions
+  els.list.querySelectorAll('[data-edit]').forEach((b) =>
+    b.addEventListener('click', () => {
+      const e = data.expenses.find((x) => x.id === b.dataset.edit);
+      if (e) openEditExpense(e, data);
+    })
+  );
+  els.list.querySelectorAll('[data-delete]').forEach((b) =>
+    b.addEventListener('click', async () => {
+      if (!window.confirm('Delete this expense?')) return;
+      b.disabled = true;
+      try {
+        await deleteExpense(b.dataset.delete);
+        await reloadAndRender();
+      } catch (err) {
+        b.disabled = false;
+        alert(err.message || 'Could not delete this expense.');
+      }
+    })
+  );
+}
+
+function rowHTML(e, people, reps) {
+  const payer = people.get(e.paid_by);
+  const pill = e.settled
+    ? `<span class="rv-pill rv-pill-settled">Settled</span>`
+    : `<span class="rv-pill rv-pill-deferred">Deferred</span>`;
+
+  let repHTML = '';
+  if (e.settled && reps.length > 0) {
+    repHTML =
+      `<div class="rv-reps">` +
+      reps
+        .map((r) => {
+          const who = people.get(r.repaid_by);
+          const via = r.funded_by ? (people.get(r.funded_by)?.name || 'Vyuh Gravity') : 'Personal';
+          return `<p class="rv-rep">${esc(who ? who.name : '—')} repaid ₹${inr(r.amount)} on ${fmtDay(r.repayment_date)} · via ${esc(via)}</p>`;
+        })
+        .join('') +
+      `</div>`;
+  }
+
+  return `<li class="rv-row-block">
+    <div class="rv-row-line">
+      <p class="rv-row-title mb-0">${esc(e.name)}</p>
+      <span class="rv-num">₹${inr(e.amount)}</span>
+    </div>
+    <div class="rv-row-line rv-row-line-sub">
+      <p class="rv-row-sub mb-0">Paid by ${esc(payer ? payer.name : '—')}${e.note ? ' · ' + esc(e.note) : ''}</p>
+      ${pill}
+    </div>
+    ${repHTML}
+    <div class="rv-row-actions">
+      <button type="button" class="rv-chip" data-edit="${esc(e.id)}">Edit</button>
+      <button type="button" class="rv-chip rv-chip-danger" data-delete="${esc(e.id)}">Delete</button>
+    </div>
+  </li>`;
+}
+
+function populateFilters(data) {
+  const f = readFilters();
+  els.paidBy.innerHTML =
+    `<option value="">Anyone paid</option>` +
+    (data.people || []).map((p) => `<option value="${esc(p.id)}">${esc(p.name)}</option>`).join('');
+  els.paidBy.value = f.paid_by;
+  els.settled.value = f.settled;
+  els.month.value = f.month;
+
+  const onChange = () => {
+    const next = readFilters(); // keep the multi-month selection
+    next.paid_by = els.paidBy.value;
+    next.settled = els.settled.value;
+    next.month = els.month.value;
+    writeFilters(next);
+    render();
+  };
+  els.paidBy.addEventListener('change', onChange);
+  els.settled.addEventListener('change', onChange);
+  els.month.addEventListener('change', onChange);
+}
+
+// Build the "Months" multi-select from the months present in the data.
+function populateMonthsFilter(data) {
+  const menu = document.getElementById('f-months-menu');
+  const selected = new Set(readFilters().months); // empty = all
+  const keys = [...new Set((data.expenses || []).map((e) => monthKey(e.expense_date)))].sort().reverse();
+
+  menu.innerHTML = keys
+    .map((k) => {
+      const [y, m] = k.split('-').map(Number);
+      const label = new Date(y, m - 1, 1).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
+      const checked = selected.size === 0 || selected.has(k) ? 'checked' : '';
+      return `<label class="dropdown-item rv-month-item">
+        <input type="checkbox" class="form-check-input" value="${esc(k)}" ${checked} />
+        <span>${esc(label)}</span>
+      </label>`;
+    })
+    .join('');
+
+  menu.querySelectorAll('input[type="checkbox"]').forEach((cb) =>
+    cb.addEventListener('change', onMonthsChange)
+  );
+  updateMonthsLabel();
+}
+
+function onMonthsChange() {
+  const boxes = [...document.querySelectorAll('#f-months-menu input[type="checkbox"]')];
+  const checked = boxes.filter((c) => c.checked).map((c) => c.value);
+  const next = readFilters();
+  // All checked == "all months" -> store empty so the URL stays clean.
+  next.months = checked.length === boxes.length ? [] : checked;
+  writeFilters(next);
+  updateMonthsLabel();
+  render();
+}
+
+function updateMonthsLabel() {
+  const btn = document.getElementById('f-months-btn');
+  const boxes = [...document.querySelectorAll('#f-months-menu input[type="checkbox"]')];
+  const checked = boxes.filter((c) => c.checked);
+  if (boxes.length === 0) btn.textContent = 'All months';
+  else if (checked.length === 0) btn.textContent = 'No months';
+  else if (checked.length === boxes.length) btn.textContent = 'All months';
+  else if (checked.length === 1) {
+    const [y, m] = checked[0].value.split('-').map(Number);
+    btn.textContent = new Date(y, m - 1, 1).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
+  } else btn.textContent = `${checked.length} months`;
+}
+
+async function reloadAndRender() {
+  window.__RV_DATA = await getData(true); // force refresh after a mutation
+  render();
+}
+
+function wireChrome() {
+  document.getElementById('logout-btn')?.addEventListener('click', logout);
+  document.querySelectorAll('[data-action="add"]').forEach((b) =>
+    b.addEventListener('click', () => openAddExpense(window.__RV_DATA))
+  );
+}
+
+(async function main() {
+  await requireSession();
+  wireChrome();
+  initExpenseModal(reloadAndRender);
+  try {
+    window.__RV_DATA = await getData();
+    populateFilters(window.__RV_DATA);
+    populateMonthsFilter(window.__RV_DATA);
+    render();
+  } catch (err) {
+    els.list.innerHTML = `<div class="rv-card rv-error-text">${esc(err.message)}</div>`;
+  }
+})();

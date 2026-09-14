@@ -1,0 +1,69 @@
+/* Ruchi Vana palette + fonts, and mapping onto Bootstrap's CSS variables.
+   Pages set data-bs-theme="dark" so Bootstrap components start from a dark base;
+   these overrides swap in the warm "soil / harvest / parchment" identity. */
+
+:root {
+  --soil: #1b1a17;
+  --canopy: #20281f;
+  --bark: #2e2a22;
+  --parchment: #efe9dd;
+  --husk: #b8ad97;
+  --harvest: #c9a227;
+  --harvest-bright: #d8b02f;
+  --leaf: #5c7a52;
+  --rust: #a85c32;
+
+  --font-display: "Fraunces", Georgia, "Times New Roman", serif;
+  --font-body: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+}
+
+:root,
+[data-bs-theme="dark"] {
+  --bs-body-bg: var(--soil);
+  --bs-body-color: var(--parchment);
+  --bs-body-font-family: var(--font-body);
+  --bs-border-color: var(--bark);
+  --bs-emphasis-color: var(--parchment);
+  --bs-secondary-color: var(--husk);
+  --bs-tertiary-bg: var(--canopy);
+  --bs-primary: var(--harvest);
+  --bs-primary-rgb: 201, 162, 39;
+  --bs-link-color: var(--harvest);
+  --bs-link-hover-color: var(--harvest-bright);
+  --bs-focus-ring-color: rgba(201, 162, 39, 0.35);
+  --bs-modal-bg: var(--soil);
+  --bs-modal-border-color: var(--bark);
+  --bs-border-radius: 0.85rem;
+  --bs-border-radius-lg: 1.1rem;
+}
+
+html,
+body {
+  background: var(--soil);
+}
+
+body {
+  color: var(--parchment);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+::selection {
+  background: var(--harvest);
+  color: var(--soil);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}

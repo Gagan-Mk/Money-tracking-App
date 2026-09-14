@@ -1,0 +1,32 @@
+{
+  "me": { "name": "Gagan", "isAdmin": true },
+  "people": [
+    { "id": "p_ankith", "name": "Ankith", "can_login": true },
+    { "id": "p_gagan", "name": "Gagan", "can_login": true },
+    { "id": "p_vg", "name": "Vyuh Gravity", "can_login": false },
+    { "id": "p_yashas", "name": "Yashas", "can_login": true }
+  ],
+  "splitVersions": [
+    {
+      "id": "v1",
+      "start_date": "2026-01-01",
+      "shares": [
+        { "version_id": "v1", "person_id": "p_gagan", "percentage": 35, "name": "Gagan" },
+        { "version_id": "v1", "person_id": "p_ankith", "percentage": 35, "name": "Ankith" },
+        { "version_id": "v1", "person_id": "p_yashas", "percentage": 30, "name": "Yashas" }
+      ]
+    }
+  ],
+  "expenses": [
+    { "id": "e1", "name": "Team dinner", "amount": 9000, "paid_by": "p_gagan", "settled": true, "expense_date": "2026-09-10", "note": "kickoff", "created_at": "2026-09-10T12:00:00Z" },
+    { "id": "e2", "name": "Packaging boxes", "amount": 30000, "paid_by": "p_gagan", "settled": false, "expense_date": "2026-09-05", "note": null, "created_at": "2026-09-05T09:00:00Z" },
+    { "id": "e3", "name": "Fuel run", "amount": 12000, "paid_by": "p_ankith", "settled": false, "expense_date": "2026-09-02", "note": "deliveries", "created_at": "2026-09-02T08:00:00Z" },
+    { "id": "e4", "name": "Roasting equipment", "amount": 50000, "paid_by": "p_vg", "settled": false, "expense_date": "2026-08-20", "note": "funded by VG", "created_at": "2026-08-20T10:00:00Z" },
+    { "id": "e5", "name": "Supplies", "amount": 6000, "paid_by": "p_yashas", "settled": false, "expense_date": "2026-08-15", "note": null, "created_at": "2026-08-15T10:00:00Z" },
+    { "id": "e6", "name": "Stationery", "amount": 1500, "paid_by": "p_ankith", "settled": true, "expense_date": "2026-08-10", "note": null, "created_at": "2026-08-10T10:00:00Z" }
+  ],
+  "repayments": [
+    { "id": "r1", "expense_id": "e1", "amount": 3150, "repayment_date": "2026-09-10", "repaid_by": "p_ankith", "funded_by": null, "note": null },
+    { "id": "r2", "expense_id": "e1", "amount": 2700, "repayment_date": "2026-09-10", "repaid_by": "p_yashas", "funded_by": null, "note": null }
+  ]
+}
