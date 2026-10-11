@@ -28,5 +28,19 @@
   "repayments": [
     { "id": "r1", "expense_id": "e1", "amount": 3150, "repayment_date": "2026-09-10", "repaid_by": "p_ankith", "funded_by": null, "note": null },
     { "id": "r2", "expense_id": "e1", "amount": 2700, "repayment_date": "2026-09-10", "repaid_by": "p_yashas", "funded_by": null, "note": null }
+  ],
+  "batches": [
+    { "id": "b1", "name": "First batch", "started_on": "2026-07-01", "bird_count": 50, "is_active": true, "created_at": "2026-07-01T00:00:00Z" }
+  ],
+  "mortality": [
+    { "id": "mo1", "batch_id": "b1", "event_date": "2026-08-20", "count": 2, "reason": "Overcrowding stress in the pen", "prevention": "Split into two pens earlier", "note": null, "created_at": "2026-08-20T00:00:00Z" },
+    { "id": "mo2", "batch_id": "b1", "event_date": "2026-07-15", "count": 3, "reason": "Heat lamp failed overnight", "prevention": "Add a backup lamp + temperature alarm", "note": null, "created_at": "2026-07-15T00:00:00Z" }
+  ],
+  "reminders": [
+    { "id": "rm1", "due_date": "2026-10-12", "title": "Order next feed batch (25kg)", "kind": "pending", "note": null, "done": false },
+    { "id": "rm2", "due_date": "2026-10-15", "title": "Newcastle (ND) vaccine", "kind": "vaccine", "note": "Lasota via drinking water", "done": false },
+    { "id": "rm3", "due_date": "2026-10-20", "title": "Deworming", "kind": "task", "note": null, "done": false },
+    { "id": "rm4", "due_date": "2026-11-01", "title": "ND booster", "kind": "vaccine", "note": null, "done": false },
+    { "id": "rm5", "due_date": "2026-10-05", "title": "Clean water tank", "kind": "task", "note": null, "done": true }
   ]
 }

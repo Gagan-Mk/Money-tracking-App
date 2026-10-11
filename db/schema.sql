@@ -68,3 +68,44 @@ alter table expenses enable row level security;
 alter table repayments enable row level security;
 alter table split_versions enable row level security;
 alter table split_shares enable row level security;
+
+-- Flock tracking: batches of hens, mortality events, and dated reminders.
+create table batches (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  started_on date,
+  bird_count integer check (bird_count is null or bird_count >= 0),
+  is_active boolean not null default true,
+  created_at timestamptz not null default now()
+);
+
+create table mortality (
+  id uuid primary key default gen_random_uuid(),
+  batch_id uuid references batches(id) on delete cascade,
+  event_date date not null default current_date,
+  count integer not null check (count > 0),
+  reason text,       -- what mistake happened
+  prevention text,   -- next time what to avoid
+  note text,
+  created_by uuid references people(id),
+  created_at timestamptz not null default now()
+);
+
+create table reminders (
+  id uuid primary key default gen_random_uuid(),
+  due_date date not null,
+  title text not null,
+  kind text,         -- 'vaccine' | 'task' | 'pending' | 'reminder'
+  note text,
+  done boolean not null default false,
+  created_by uuid references people(id),
+  created_at timestamptz not null default now()
+);
+
+create index mortality_batch_idx on mortality (batch_id);
+create index mortality_date_idx on mortality (event_date);
+create index reminders_due_idx on reminders (due_date);
+
+alter table batches enable row level security;
+alter table mortality enable row level security;
+alter table reminders enable row level security;

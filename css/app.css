@@ -576,3 +576,196 @@
 .rv-share-note {
   color: var(--harvest);
 }
+
+/* ---- Shared bits: section head, links, small buttons ---- */
+.rv-section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+.rv-link {
+  color: var(--harvest);
+  text-decoration: none;
+  font-size: 0.8rem;
+}
+.rv-link:hover {
+  color: var(--harvest-bright);
+}
+.rv-btn-sm {
+  padding: 0.45rem 0.9rem;
+  font-size: 0.9rem;
+}
+.rv-icon-btn {
+  border: none;
+  background: transparent;
+  color: var(--husk);
+  cursor: pointer;
+  font-size: 0.9rem;
+  padding: 0 0.25rem;
+  line-height: 1;
+}
+.rv-icon-btn:hover {
+  color: var(--harvest);
+}
+.rv-card-title {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.25rem;
+  color: var(--parchment);
+}
+.rv-check-label {
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--parchment);
+  margin-left: 0.4rem;
+}
+
+/* ---- Mortality card (dashboard) ---- */
+.rv-batch-name {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  color: var(--parchment);
+  margin-bottom: 0.1rem;
+}
+.rv-total-sm {
+  font-size: clamp(1.9rem, 6vw, 2.5rem);
+}
+.rv-total-unit {
+  font-family: var(--font-body);
+  font-size: 1rem;
+  font-weight: 400;
+  color: var(--husk);
+}
+
+/* ---- Upcoming reminders (dashboard) ---- */
+.rv-upcoming-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.45rem 0;
+}
+.rv-upcoming-row + .rv-upcoming-row {
+  border-top: 1px solid var(--bark);
+}
+
+/* ---- Reminder kind badges ---- */
+.rv-kind {
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.rv-kind-vaccine {
+  background: rgba(92, 122, 82, 0.22);
+  color: var(--leaf);
+}
+.rv-kind-task {
+  background: rgba(201, 162, 39, 0.2);
+  color: var(--harvest);
+}
+.rv-kind-pending {
+  background: rgba(168, 92, 50, 0.22);
+  color: var(--rust);
+}
+.rv-kind-reminder {
+  background: rgba(184, 173, 151, 0.18);
+  color: var(--husk);
+}
+
+/* ---- Flock stats ---- */
+.rv-batch-select {
+  width: auto;
+  min-width: 10rem;
+}
+.rv-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+@media (min-width: 576px) {
+  .rv-stat-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+.rv-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  background: rgba(27, 26, 23, 0.35);
+  border: 1px solid var(--bark);
+  border-radius: 0.6rem;
+  padding: 0.7rem 0.8rem;
+}
+.rv-stat-num {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.5rem;
+  color: var(--parchment);
+}
+.rv-stat-bad {
+  color: var(--rust);
+}
+.rv-stat-label {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--husk);
+}
+.rv-mt-note {
+  font-size: 0.8rem;
+}
+
+/* ---- Mortality log tags ---- */
+.rv-tag {
+  font-family: var(--font-mono);
+  font-size: 0.55rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 0.1rem 0.4rem;
+  border-radius: 0.3rem;
+  margin-right: 0.3rem;
+}
+.rv-tag-bad {
+  background: rgba(168, 92, 50, 0.22);
+  color: var(--rust);
+}
+.rv-tag-good {
+  background: rgba(92, 122, 82, 0.22);
+  color: var(--leaf);
+}
+
+/* ---- Reminder rows ---- */
+.rv-reminder-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.7rem;
+}
+.rv-reminder-main {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.rv-done-check {
+  margin-top: 0.3rem;
+  flex: 0 0 auto;
+}
+.rv-strike {
+  text-decoration: line-through;
+  color: var(--husk);
+}
+.rv-overdue {
+  color: var(--rust);
+}
+.rv-label-inline {
+  color: var(--husk);
+}

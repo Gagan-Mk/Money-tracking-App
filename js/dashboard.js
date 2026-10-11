@@ -1,7 +1,9 @@
-import { requireSession, getData, logout } from './api.js?v=4';
+import { requireSession, getData, logout, batches as batchesApi } from './api.js?v=4';
 import { computeBalances, monthTotal, balanceBreakdown } from './balances.js?v=4';
 import { inr, inrAbs, fmtDay, esc } from './format.js?v=4';
 import { initExpenseModal, openAddExpense } from './add-expense.js?v=4';
+import { activeBatch, deathsFor, dueLabel, kindLabel, todayStr } from './farm.js?v=4';
+import { openForm } from './modal.js?v=4';
 
 const els = {
   monthLabel: document.getElementById('month-label'),
@@ -25,7 +27,86 @@ async function render() {
   if (els.allTime) els.allTime.textContent = '₹' + inr(allTime);
 
   renderBalances(data);
+  renderMortality(data);
+  renderUpcoming(data);
   renderRecent(data);
+}
+
+function renderMortality(data) {
+  const card = document.getElementById('mortality-card');
+  if (!card) return;
+  const batch = activeBatch(data.batches);
+
+  if (!batch) {
+    card.innerHTML = `
+      <p class="rv-eyebrow mb-2">Mortality</p>
+      <p class="rv-muted mb-3">No batch yet — start one to track mortality.</p>
+      <a class="btn rv-btn-primary rv-btn-sm" href="flock.html">Start a batch →</a>`;
+    return;
+  }
+
+  const deaths = deathsFor(batch.id, data.mortality);
+  const count = batch.bird_count;
+  const alive = count != null ? Math.max(0, count - deaths) : null;
+
+  card.innerHTML = `
+    <div class="rv-section-head mb-1">
+      <p class="rv-eyebrow mb-0">Mortality</p>
+      <a class="rv-link" href="flock.html">Flock →</a>
+    </div>
+    <div class="rv-batch-name">
+      <span>${esc(batch.name)}</span>
+      <button type="button" class="rv-icon-btn" id="edit-batch-name" title="Rename batch" aria-label="Rename batch">✎</button>
+    </div>
+    <p class="rv-total rv-total-sm mb-1">${deaths}<span class="rv-total-unit"> died</span></p>
+    ${
+      alive != null
+        ? `<p class="rv-muted mb-0">${alive} alive · of ${count}</p>`
+        : `<p class="rv-muted mb-0">till date · <a class="rv-link" href="flock.html">set a bird count</a></p>`
+    }`;
+
+  card.querySelector('#edit-batch-name')?.addEventListener('click', () => {
+    openForm({
+      title: 'Rename batch',
+      fields: [{ name: 'name', label: 'Batch name', value: batch.name, required: true }],
+      onSubmit: async (v) => {
+        if (!v.name.trim()) throw new Error('Name is required.');
+        await batchesApi.update({ id: batch.id, name: v.name.trim() });
+        await render();
+      },
+    });
+  });
+}
+
+function renderUpcoming(data) {
+  const box = document.getElementById('upcoming');
+  if (!box) return;
+  const today = todayStr();
+  const upcoming = (data.reminders || [])
+    .filter((r) => !r.done && r.due_date >= today)
+    .sort((a, b) => a.due_date.localeCompare(b.due_date))
+    .slice(0, 5);
+
+  if (upcoming.length === 0) {
+    box.innerHTML = `<p class="rv-muted mb-0">Nothing scheduled. <a class="rv-link" href="reminders.html">Add one →</a></p>`;
+    return;
+  }
+
+  box.innerHTML =
+    `<ul class="rv-list-plain mb-0">` +
+    upcoming
+      .map(
+        (r) => `
+      <li class="rv-upcoming-row">
+        <div>
+          <p class="rv-row-title mb-0">${esc(r.title)}</p>
+          <p class="rv-row-sub mb-0">${esc(fmtDay(r.due_date))} · ${esc(dueLabel(r.due_date))}</p>
+        </div>
+        <span class="rv-kind rv-kind-${esc(r.kind || 'reminder')}">${esc(kindLabel(r.kind))}</span>
+      </li>`
+      )
+      .join('') +
+    `</ul>`;
 }
 
 function renderBalances(data) {

@@ -88,6 +88,32 @@ export async function deleteExpense(id) {
   return mutate('DELETE', { id });
 }
 
+// Generic CRUD for the flock tables (batches / mortality / reminders).
+export const batches = crud('/api/batches', 'batches');
+export const mortality = crud('/api/mortality', 'mortality');
+export const reminders = crud('/api/reminders', 'reminders');
+
+function crud(url, key) {
+  return {
+    create: (body) => (MOCK ? mockWrite(key, 'POST', body) : mutateAt(url, 'POST', body)),
+    update: (body) => (MOCK ? mockWrite(key, 'PATCH', body) : mutateAt(url, 'PATCH', body)),
+    remove: (id) => (MOCK ? mockWrite(key, 'DELETE', { id }) : mutateAt(url, 'DELETE', { id })),
+  };
+}
+
+async function mutateAt(url, method, body) {
+  const res = await fetch(url, {
+    method,
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'same-origin',
+    body: JSON.stringify(body),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || 'Request failed.');
+  invalidate();
+  return data;
+}
+
 export async function logout() {
   if (!MOCK) {
     try {
@@ -167,5 +193,40 @@ function mockUpdate(payload) {
 function mockDelete(id) {
   _cache.expenses = _cache.expenses.filter((x) => x.id !== id);
   _cache.repayments = _cache.repayments.filter((r) => r.expense_id !== id);
+  return Promise.resolve({ ok: true });
+}
+function mockNormalize(body) {
+  const b = { ...body };
+  if (b.count != null && b.count !== '') b.count = Number(b.count);
+  if (b.bird_count === '') b.bird_count = null;
+  else if (b.bird_count != null) b.bird_count = Number(b.bird_count);
+  if (b.done != null) b.done = !!b.done;
+  return b;
+}
+function mockWrite(key, method, body) {
+  const arr = (_cache[key] = _cache[key] || []);
+  if (method === 'POST') {
+    const row = { id: uid(), created_at: new Date().toISOString(), ...mockNormalize(body) };
+    if (key === 'batches' && row.is_active !== false) {
+      arr.forEach((b) => (b.is_active = false));
+      row.is_active = true;
+    }
+    arr.unshift(row);
+    return Promise.resolve({ row });
+  }
+  if (method === 'PATCH') {
+    const row = arr.find((x) => x.id === body.id);
+    if (row) {
+      if (key === 'batches' && body.is_active === true) {
+        arr.forEach((b) => {
+          if (b.id !== body.id) b.is_active = false;
+        });
+      }
+      Object.assign(row, mockNormalize(body));
+    }
+    return Promise.resolve({ row });
+  }
+  _cache[key] = arr.filter((x) => x.id !== body.id);
+  if (key === 'batches') _cache.mortality = (_cache.mortality || []).filter((m) => m.batch_id !== body.id);
   return Promise.resolve({ ok: true });
 }
