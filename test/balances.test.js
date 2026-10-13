@@ -96,4 +96,27 @@ check('balanceBreakdown for VG has no split share', () => {
   assert.equal(b.shareItems.length, 0);
 });
 
+check('contributions = each person total cash in, reconciles to total spent', () => {
+  const rows = client.contributions(data.expenses, data.people, data.repayments);
+  const byId = Object.fromEntries(rows.map((r) => [r.id, r.contributed]));
+  // dinner 9000 settled (Gagan 3150, Ankith 3150, Yashas 2700);
+  // pkg 30000 (Gagan), fuel 12000 (Ankith), equip 50000 (VG),
+  // supplies 6000 (Yashas), stationery 1500 settled (Ankith, no reps -> full)
+  assert.equal(byId.p_gagan, 33150);
+  assert.equal(byId.p_ankith, 16650);
+  assert.equal(byId.p_yashas, 8700);
+  assert.equal(byId.p_vg, 50000);
+  const sum = rows.reduce((s, r) => s + r.contributed, 0);
+  const totalSpent = data.expenses.reduce((s, e) => s + Number(e.amount), 0);
+  assert.equal(sum, totalSpent, 'contributions must reconcile to total spent');
+  assert.ok(rows.every((r) => r.contributed >= 0), 'nobody owes RV (no negatives)');
+});
+
+check('contributionBreakdown lists the bills behind a contribution', () => {
+  const b = client.contributionBreakdown('p_gagan', data.expenses, data.repayments);
+  assert.equal(b.total, 33150);
+  assert.equal(b.items.length, 2); // dinner share + packaging
+  assert.equal(b.items.reduce((s, it) => s + it.amount, 0), 33150);
+});
+
 console.log(`\n${passed} checks passed.`);

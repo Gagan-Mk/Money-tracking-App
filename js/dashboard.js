@@ -1,6 +1,6 @@
 import { requireSession, getData, logout, batches as batchesApi } from './api.js?v=4';
-import { computeBalances, monthTotal, balanceBreakdown } from './balances.js?v=4';
-import { inr, inrAbs, fmtDay, esc } from './format.js?v=4';
+import { monthTotal, contributions, contributionBreakdown } from './balances.js?v=4';
+import { inr, fmtDay, esc } from './format.js?v=4';
 import { initExpenseModal, openAddExpense } from './add-expense.js?v=4';
 import { activeBatch, deathsFor, dueLabel, kindLabel, todayStr } from './farm.js?v=4';
 import { openForm } from './modal.js?v=4';
@@ -26,7 +26,7 @@ async function render() {
   const allTime = (data.expenses || []).reduce((s, e) => s + Number(e.amount), 0);
   if (els.allTime) els.allTime.textContent = '₹' + inr(allTime);
 
-  renderBalances(data);
+  renderContributions(data);
   renderMortality(data);
   renderUpcoming(data);
   renderRecent(data);
@@ -109,29 +109,27 @@ function renderUpcoming(data) {
     `</ul>`;
 }
 
-function renderBalances(data) {
-  const balances = computeBalances(data.expenses, data.people, data.splitVersions, data.repayments);
+function renderContributions(data) {
+  const rows = contributions(data.expenses, data.people, data.repayments)
+    .filter((b) => b.contributed > 0.5)
+    .sort((a, b) => b.contributed - a.contributed);
 
-  const allSquare = balances.every((b) => Math.abs(b.net) <= 0.5);
-  if (allSquare) {
-    els.balances.innerHTML = `<p class="rv-muted mb-0">Everyone's square — no deferred dues right now.</p>`;
+  if (rows.length === 0) {
+    els.balances.innerHTML = `<p class="rv-muted mb-0">No contributions yet.</p>`;
     return;
   }
 
-  const rows = balances
-    .slice()
-    .sort((a, b) => b.net - a.net)
-    .map((b) => {
-      let val = '<span class="rv-num rv-flat">—</span>';
-      if (b.net > 0.5) val = `<span class="rv-num rv-owed">₹${inrAbs(b.net)}</span>`;
-      else if (b.net < -0.5) val = `<span class="rv-num rv-owes">owes RV ₹${inrAbs(b.net)}</span>`;
-      return `<li class="rv-balance-row rv-balance-click" data-person="${esc(b.id)}" role="button" tabindex="0" title="See the transactions behind this">
-        <span>${esc(b.name)}<span class="rv-chevron">›</span></span>${val}
-      </li>`;
-    })
-    .join('');
-
-  els.balances.innerHTML = `<ul class="rv-list-plain mb-0">${rows}</ul>`;
+  els.balances.innerHTML =
+    `<ul class="rv-list-plain mb-0">` +
+    rows
+      .map(
+        (b) => `<li class="rv-balance-row rv-balance-click" data-person="${esc(b.id)}" role="button" tabindex="0" title="See the bills behind this">
+          <span>${esc(b.name)}<span class="rv-chevron">›</span></span>
+          <span class="rv-num rv-owed">₹${inr(b.contributed)}</span>
+        </li>`
+      )
+      .join('') +
+    `</ul>`;
 
   els.balances.querySelectorAll('[data-person]').forEach((li) => {
     const open = () => openPersonDetail(li.dataset.person, data);
@@ -206,37 +204,21 @@ function detailLine(title, sub, amount) {
 function openPersonDetail(personId, data) {
   ensureDetailModal();
   const person = (data.people || []).find((p) => p.id === personId);
-  const b = balanceBreakdown(personId, data.expenses, data.splitVersions, data.repayments);
+  const b = contributionBreakdown(personId, data.expenses, data.repayments);
 
-  const netLine =
-    b.net > 0.5
-      ? `<span class="rv-owed">RV owes ₹${inrAbs(b.net)}</span>`
-      : b.net < -0.5
-      ? `<span class="rv-owes">Owes RV ₹${inrAbs(b.net)}</span>`
-      : `<span class="rv-flat">Square</span>`;
-
-  const paidHTML =
-    b.paidItems.map((it) => detailLine(it.name, fmtDay(it.date), '₹' + inr(it.amount))).join('') +
-    b.fundedItems.map((it) => detailLine('Repayment funded', fmtDay(it.date), '₹' + inr(it.amount))).join('');
-
-  const shareHTML = b.shareItems
-    .map((it) => detailLine(it.name, `${fmtDay(it.date)} · ${it.pct}% of ₹${inr(it.amount)}`, '₹' + inr(it.share)))
+  const itemsHTML = b.items
+    .map((it) => {
+      let sub = fmtDay(it.date) + (it.settled ? ' · settled' : ' · deferred');
+      if (!it.isPayer) sub += ' · their share';
+      return detailLine(it.name, sub, '₹' + inr(it.amount));
+    })
     .join('');
 
-  detailEl.querySelector('#rvDetailTitle').textContent = person ? person.name : 'Balance';
+  detailEl.querySelector('#rvDetailTitle').textContent = person ? person.name : 'Contribution';
   detailEl.querySelector('#rvDetailBody').innerHTML = `
-    <div class="rv-detail-net">${netLine}</div>
-    <p class="rv-detail-formula">Paid ₹${inr(b.paid)} − their share ₹${inr(b.owedShare)} = net ₹${inr(b.net)}</p>
-    ${detailSection(
-      `Paid — deferred expenses${b.fundedItems.length ? ' + funded repayments' : ''}`,
-      paidHTML,
-      'No deferred expenses paid.'
-    )}
-    ${detailSection(
-      'Their share of deferred expenses',
-      shareHTML,
-      'No split share (e.g. Vyuh Gravity) — RV just owes back whatever it paid.'
-    )}
+    <div class="rv-detail-net rv-owed">RV owes ₹${inr(b.total)}</div>
+    <p class="rv-detail-formula">${esc(person ? person.name : 'This person')}'s total put into RV — repaid first from profit.</p>
+    ${detailSection('Bills they paid into', itemsHTML, 'No contributions yet.')}
   `;
 
   detailModal.show();

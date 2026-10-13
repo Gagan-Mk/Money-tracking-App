@@ -6,19 +6,25 @@ fast, responsive across phone / iPad / laptop, and deploys on Vercel like before
 
 ## How the money math works
 
-- Every expense has a **payer** (a founder or Vyuh Gravity) and a **Settled?** flag.
-- **Settled = yes** → already squared up in person, just a record, doesn't touch balances.
-- **Settled = no (default)** → deferred. It accumulates into "RV owes X" until RV can repay it.
-- The 3-way founder split is **not** entered in the app — it lives only in the database
-  (`split_versions` / `split_shares`), edited via the scripts below. Each deferred expense
-  automatically uses whichever split ratio was active *on that expense's date*, so changing
-  the ratio later never changes past months' numbers.
-- Balance per founder = (what they personally paid on deferred expenses, plus any repayment
-  amounts they funded) − (their split share across all deferred expenses). Vyuh Gravity has
-  no split share — RV just owes it back whatever it paid. Balances always net to zero.
+The model is **contributions**: founder (and Vyuh Gravity) spending is capital put into RV,
+which RV repays first out of future profit. So **"RV owes [person]" = the total cash that
+person has actually put in.** Everyone is only ever owed money; nobody "owes RV".
 
-The math lives in one place and is unit-tested: `lib/balances.js` (server) and its identical
-client port `js/balances.js` (browser). `npm test` asserts they agree.
+- Every expense has a **payer** and a **Settled?** flag.
+  - **Settled** = the cost was split on the spot — each founder paid their own share directly.
+  - **Deferred** = one person fronted the whole thing; the split hasn't been squared yet.
+- A person's contribution to one expense is their **effective share** (`effectiveShares`):
+  the payer bears `amount − repayments`, and each repaid share is borne by whoever funded it
+  (Vyuh Gravity if VG-funded, otherwise the founder who paid their share). Both settled and
+  deferred bills count — a settled share is a contribution just like a deferred payment.
+- `RV owes person P` = that person's effective share summed across **all** expenses. This always
+  reconciles to the **total RV has spent** (`contributions` in `js/balances.js`).
+- The 3-way split (`split_versions` / `split_shares`, edited via the scripts below) is used only
+  to **divide a shared bill into per-person shares** when settling, and for splitting **profit**
+  later — it never creates an "owes RV".
+
+The math lives in one place and is unit-tested (`js/balances.js`); `npm test` checks that
+contributions reconcile to total spent and that the client port matches `lib/balances.js`.
 
 ## Architecture (why it's fast now)
 

@@ -162,6 +162,52 @@ export function balanceBreakdown(personId, expenses, splitVersions, repayments =
   };
 }
 
+// CONTRIBUTION MODEL: what RV owes each person = the total cash they actually
+// put into RV, across all bills (settled + deferred). A person's contribution
+// to one expense is their effective share (effectiveShares): the payer bears
+// amount − repayments, and each repaid share is borne by whoever funded it
+// (Vyuh Gravity if VG-funded, else the founder who paid it). Everyone is only
+// ever owed money; nobody "owes RV". Sums to the total RV has spent.
+export function contributions(expenses, people, repayments = []) {
+  const repByExp = {};
+  for (const r of repayments || []) (repByExp[r.expense_id] = repByExp[r.expense_id] || []).push(r);
+
+  const total = Object.fromEntries(people.map((p) => [p.id, 0]));
+  for (const e of expenses) {
+    const s = effectiveShares(e, repByExp[e.id] || []);
+    for (const [pid, amt] of Object.entries(s)) {
+      if (pid in total) total[pid] += amt;
+    }
+  }
+  return people.map((p) => ({ id: p.id, name: p.name, contributed: round2(total[p.id] || 0) }));
+}
+
+// Per-expense breakdown of one person's contribution (what makes up what RV
+// owes them). Preserves the order of `expenses` as given (newest-first from the API).
+export function contributionBreakdown(personId, expenses, repayments = []) {
+  const repByExp = {};
+  for (const r of repayments || []) (repByExp[r.expense_id] = repByExp[r.expense_id] || []).push(r);
+
+  const items = [];
+  let total = 0;
+  for (const e of expenses) {
+    const amt = effectiveShares(e, repByExp[e.id] || [])[personId];
+    if (amt && Math.abs(amt) > 0.005) {
+      items.push({
+        id: e.id,
+        name: e.name,
+        date: e.expense_date,
+        amount: round2(amt),
+        full: Number(e.amount),
+        settled: !!e.settled,
+        isPayer: e.paid_by === personId,
+      });
+      total += amt;
+    }
+  }
+  return { total: round2(total), items };
+}
+
 function round2(n) {
   return Math.round(n * 100) / 100;
 }
