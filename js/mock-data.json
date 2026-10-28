@@ -1,10 +1,10 @@
 {
   "me": { "name": "Gagan", "isAdmin": true },
   "people": [
-    { "id": "p_ankith", "name": "Ankith", "can_login": true },
-    { "id": "p_gagan", "name": "Gagan", "can_login": true },
-    { "id": "p_vg", "name": "Vyuh Gravity", "can_login": false },
-    { "id": "p_yashas", "name": "Yashas", "can_login": true }
+    { "id": "p_ankith", "name": "Ankith", "can_login": false, "is_active": false },
+    { "id": "p_gagan", "name": "Gagan", "can_login": true, "is_active": true },
+    { "id": "p_vg", "name": "Vyuh Gravity", "can_login": false, "is_active": true },
+    { "id": "p_yashas", "name": "Yashas", "can_login": true, "is_active": true }
   ],
   "splitVersions": [
     {
@@ -15,9 +15,18 @@
         { "version_id": "v1", "person_id": "p_ankith", "percentage": 35, "name": "Ankith" },
         { "version_id": "v1", "person_id": "p_yashas", "percentage": 30, "name": "Yashas" }
       ]
+    },
+    {
+      "id": "v2",
+      "start_date": "2026-10-01",
+      "shares": [
+        { "version_id": "v2", "person_id": "p_gagan", "percentage": 50, "name": "Gagan" },
+        { "version_id": "v2", "person_id": "p_yashas", "percentage": 50, "name": "Yashas" }
+      ]
     }
   ],
   "expenses": [
+    { "id": "e7", "name": "Incubator", "amount": 20000, "paid_by": "p_gagan", "settled": false, "expense_date": "2026-10-20", "note": "bought with loan", "from_loan": true, "created_at": "2026-10-20T00:00:00Z" },
     { "id": "e1", "name": "Team dinner", "amount": 9000, "paid_by": "p_gagan", "settled": true, "expense_date": "2026-09-10", "note": "kickoff", "created_at": "2026-09-10T12:00:00Z" },
     { "id": "e2", "name": "Packaging boxes", "amount": 30000, "paid_by": "p_gagan", "settled": false, "expense_date": "2026-09-05", "note": null, "created_at": "2026-09-05T09:00:00Z" },
     { "id": "e3", "name": "Fuel run", "amount": 12000, "paid_by": "p_ankith", "settled": false, "expense_date": "2026-09-02", "note": "deliveries", "created_at": "2026-09-02T08:00:00Z" },
@@ -42,5 +51,8 @@
     { "id": "rm3", "due_date": "2026-10-20", "title": "Deworming", "kind": "task", "note": null, "done": false },
     { "id": "rm4", "due_date": "2026-11-01", "title": "ND booster", "kind": "vaccine", "note": null, "done": false },
     { "id": "rm5", "due_date": "2026-10-05", "title": "Clean water tank", "kind": "task", "note": null, "done": true }
+  ],
+  "loans": [
+    { "id": "l1", "amount": 50000, "raised_on": "2026-10-15", "source": "Bank", "note": null, "created_at": "2026-10-15T00:00:00Z" }
   ]
 }

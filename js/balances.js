@@ -26,7 +26,7 @@ export function computeBalances(expenses, people, splitVersions, repayments = []
     }
   }
 
-  const deferred = expenses.filter((e) => !e.settled);
+  const deferred = expenses.filter((e) => !e.settled && !e.from_loan);
 
   for (const expense of deferred) {
     paid[expense.paid_by] = (paid[expense.paid_by] || 0) + Number(expense.amount);
@@ -96,6 +96,9 @@ export function shareForDate(splitVersions, date, amount, excludePersonId = null
 // is set, otherwise the founder who repaid their share). Used for the ledger's
 // per-person totals. Always sums back to the full amount.
 export function effectiveShares(expense, reps = []) {
+  // Loan-funded bills are drawn from the raised loan, not from anyone's pocket —
+  // they count toward total spend but toward nobody's contribution.
+  if (expense.from_loan) return {};
   const shares = {};
   const total = Number(expense.amount);
   let repaid = 0;
@@ -116,7 +119,7 @@ export function balanceBreakdown(personId, expenses, splitVersions, repayments =
   const sortedVersions = [...splitVersions].sort(
     (a, b) => new Date(a.start_date) - new Date(b.start_date)
   );
-  const deferred = expenses.filter((e) => !e.settled);
+  const deferred = expenses.filter((e) => !e.settled && !e.from_loan);
 
   const paidItems = [];
   const shareItems = [];

@@ -18,6 +18,7 @@ let state = {
   data: null, // cached { people, splitVersions, ... }
   paidBy: null,
   settled: false,
+  fromLoan: false,
   rows: [], // settlement rows: { personId, amount, date, fundedBy: 'personal'|'vg' }
 };
 
@@ -49,14 +50,25 @@ const MODAL_HTML = `
           </div>
           <div class="rv-settled-row mb-3">
             <div>
-              <div class="rv-settled-title">Settled between us?</div>
-              <div class="rv-settled-sub">On = already squared up. Off = counts toward dues.</div>
+              <div class="rv-settled-title">Pay from loan?</div>
+              <div class="rv-settled-sub">On = drawn from the raised loan, not from a founder.</div>
             </div>
             <div class="form-check form-switch m-0">
-              <input id="ef-settled" class="form-check-input" type="checkbox" role="switch" aria-label="Settled between us">
+              <input id="ef-loan" class="form-check-input" type="checkbox" role="switch" aria-label="Pay from loan">
             </div>
           </div>
-          <div id="ef-split" class="rv-split mb-3" hidden></div>
+          <div id="ef-shared">
+            <div class="rv-settled-row mb-3">
+              <div>
+                <div class="rv-settled-title">Settled between us?</div>
+                <div class="rv-settled-sub">On = already squared up. Off = counts toward dues.</div>
+              </div>
+              <div class="form-check form-switch m-0">
+                <input id="ef-settled" class="form-check-input" type="checkbox" role="switch" aria-label="Settled between us">
+              </div>
+            </div>
+            <div id="ef-split" class="rv-split mb-3" hidden></div>
+          </div>
           <div class="mb-3">
             <label class="form-label rv-label" for="ef-note">Note (optional)</label>
             <input id="ef-note" class="form-control" placeholder="For the fuel run" autocomplete="off">
@@ -78,6 +90,10 @@ function ensureModal() {
   bsModal = new window.bootstrap.Modal(modalEl);
 
   q('#rvExpenseForm').addEventListener('submit', onSubmit);
+  q('#ef-loan').addEventListener('change', (e) => {
+    state.fromLoan = e.target.checked;
+    applyLoanMode();
+  });
   q('#ef-settled').addEventListener('change', (e) => {
     state.settled = e.target.checked;
     if (state.mode === 'add') refreshSplit();
@@ -94,17 +110,34 @@ function q(sel) {
   return modalEl.querySelector(sel);
 }
 
+// Only active founders can pay / be in a split (Gagan, Yashas).
+function payers() {
+  return (state.data.people || []).filter((p) => p.can_login);
+}
 function otherFounders() {
-  return (state.data.people || []).filter((p) => p.can_login && p.id !== state.paidBy);
+  return payers().filter((p) => p.id !== state.paidBy);
 }
 function vgPerson() {
   return (state.data.people || []).find((p) => p.name === 'Vyuh Gravity') || null;
 }
 
+// Loan-funded bills aren't shared/settled between founders — hide that section.
+function applyLoanMode() {
+  const shared = q('#ef-shared');
+  if (state.fromLoan) {
+    state.settled = false;
+    q('#ef-settled').checked = false;
+    shared.hidden = true;
+    refreshSplit();
+  } else {
+    shared.hidden = false;
+  }
+}
+
 function renderPayers() {
   const grid = q('#ef-payers');
   grid.innerHTML = '';
-  for (const p of state.data.people || []) {
+  for (const p of payers()) {
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'rv-payer' + (state.paidBy === p.id ? ' is-active' : '');
@@ -215,6 +248,7 @@ async function onSubmit(e) {
     settled: state.settled,
     expense_date: q('#ef-date').value,
     note: q('#ef-note').value,
+    from_loan: state.fromLoan,
   };
 
   if (!payload.name.trim() || !payload.amount || !payload.paid_by || !payload.expense_date) {
@@ -226,7 +260,7 @@ async function onSubmit(e) {
     return;
   }
 
-  if (state.mode === 'add' && state.settled) {
+  if (!state.fromLoan && state.mode === 'add' && state.settled) {
     const bad = state.rows.some((r) => !r.personId || Number(r.amount) <= 0 || !r.date);
     if (bad) {
       showError('Each settlement row needs a valid share amount and date.');
@@ -268,12 +302,14 @@ export function initExpenseModal(onSaved) {
 
 export function openAddExpense(data) {
   ensureModal();
+  const firstPayer = (data.people || []).filter((p) => p.can_login)[0];
   state = {
     mode: 'add',
     editId: null,
     data,
-    paidBy: (data.people && data.people[0] && data.people[0].id) || null,
+    paidBy: firstPayer ? firstPayer.id : null,
     settled: false,
+    fromLoan: false,
     rows: [],
   };
   q('#rvExpenseTitle').textContent = 'Add expense';
@@ -282,7 +318,9 @@ export function openAddExpense(data) {
   q('#ef-date').value = todayISO();
   q('#ef-note').value = '';
   q('#ef-settled').checked = false;
+  q('#ef-loan').checked = false;
   showError('');
+  applyLoanMode();
   renderPayers();
   renderSplit();
   bsModal.show();
@@ -296,6 +334,7 @@ export function openEditExpense(expense, data) {
     data,
     paidBy: expense.paid_by,
     settled: !!expense.settled,
+    fromLoan: !!expense.from_loan,
     rows: [],
   };
   q('#rvExpenseTitle').textContent = 'Edit expense';
@@ -304,7 +343,9 @@ export function openEditExpense(expense, data) {
   q('#ef-date').value = expense.expense_date;
   q('#ef-note').value = expense.note || '';
   q('#ef-settled').checked = !!expense.settled;
+  q('#ef-loan').checked = !!expense.from_loan;
   showError('');
+  applyLoanMode();
   renderPayers();
   renderSplit();
   bsModal.show();

@@ -45,3 +45,11 @@ export const REMINDER_KINDS = [
 export function kindLabel(kind) {
   return (REMINDER_KINDS.find((k) => k.value === kind) || {}).label || 'Reminder';
 }
+
+// ---- Loan ----
+export function loanRaised(loans) {
+  return (loans || []).reduce((s, l) => s + Number(l.amount), 0);
+}
+export function loanUsed(expenses) {
+  return (expenses || []).filter((e) => e.from_loan).reduce((s, e) => s + Number(e.amount), 0);
+}

@@ -11,6 +11,7 @@ create table people (
   password_hash text,            -- null for non-login payers
   can_login boolean not null default false,
   is_admin boolean not null default false,  -- only the admin can edit split config
+  is_active boolean not null default true,  -- false = ex-member ("Ex spendings")
   created_at timestamptz not null default now()
 );
 
@@ -20,6 +21,7 @@ create table expenses (
   amount numeric(12,2) not null check (amount > 0),
   paid_by uuid not null references people(id),
   settled boolean not null default false,
+  from_loan boolean not null default false,  -- drawn from a raised loan, not a founder
   expense_date date not null default current_date,
   note text,
   created_by uuid references people(id),
@@ -109,3 +111,16 @@ create index reminders_due_idx on reminders (due_date);
 alter table batches enable row level security;
 alter table mortality enable row level security;
 alter table reminders enable row level security;
+
+-- Loans raised; loan-funded expenses (expenses.from_loan) draw these down.
+create table loans (
+  id uuid primary key default gen_random_uuid(),
+  amount numeric(12,2) not null check (amount > 0),
+  raised_on date not null default current_date,
+  source text,
+  note text,
+  created_by uuid references people(id),
+  created_at timestamptz not null default now()
+);
+
+alter table loans enable row level security;

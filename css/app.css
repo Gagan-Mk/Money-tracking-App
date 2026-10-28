@@ -577,6 +577,27 @@
   color: var(--harvest);
 }
 
+/* ---- Loan pill, ex-spendings row, link-buttons ---- */
+.rv-pill-loan {
+  background: rgba(201, 162, 39, 0.2);
+  color: var(--harvest);
+}
+.rv-ex-row > span:first-child {
+  color: var(--husk);
+  font-style: italic;
+}
+.rv-linkbtn {
+  border: none;
+  background: transparent;
+  color: var(--harvest);
+  font-size: 0.8rem;
+  padding: 0;
+  cursor: pointer;
+}
+.rv-linkbtn:hover {
+  color: var(--harvest-bright);
+}
+
 /* ---- Shared bits: section head, links, small buttons ---- */
 .rv-section-head {
   display: flex;

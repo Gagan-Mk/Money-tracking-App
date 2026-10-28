@@ -18,7 +18,7 @@ export default async function handler(req, res) {
 }
 
 async function createExpense(req, res, session) {
-  const { name, amount, paid_by, settled, expense_date, note, repayments } = req.body || {};
+  const { name, amount, paid_by, settled, expense_date, note, from_loan, repayments } = req.body || {};
 
   const invalid = validate({ name, amount, paid_by, expense_date });
   if (invalid) return res.status(400).json({ error: invalid });
@@ -32,6 +32,7 @@ async function createExpense(req, res, session) {
       settled: !!settled,
       expense_date,
       note: note ? note.trim() : null,
+      from_loan: !!from_loan,
       created_by: session.personId,
     })
     .select()
@@ -63,7 +64,7 @@ async function createExpense(req, res, session) {
 }
 
 async function updateExpense(req, res, session) {
-  const { id, name, amount, paid_by, settled, expense_date, note } = req.body || {};
+  const { id, name, amount, paid_by, settled, expense_date, note, from_loan } = req.body || {};
 
   if (!id) return res.status(400).json({ error: 'Expense id is required.' });
   const invalid = validate({ name, amount, paid_by, expense_date });
@@ -78,6 +79,7 @@ async function updateExpense(req, res, session) {
       settled: !!settled,
       expense_date,
       note: note ? note.trim() : null,
+      from_loan: !!from_loan,
       created_by: session.personId,
     })
     .eq('id', id)

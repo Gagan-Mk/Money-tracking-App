@@ -142,7 +142,9 @@ function render() {
 function rowHTML(r, people, reps, f) {
   const e = r.e;
   const payer = people.get(e.paid_by);
-  const pill = e.settled
+  const pill = e.from_loan
+    ? `<span class="rv-pill rv-pill-loan">Loan</span>`
+    : e.settled
     ? `<span class="rv-pill rv-pill-settled">Settled</span>`
     : `<span class="rv-pill rv-pill-deferred">Deferred</span>`;
 
@@ -189,7 +191,10 @@ function populateFilters(data) {
   const f = readFilters();
   els.paidBy.innerHTML =
     `<option value="">Anyone paid</option>` +
-    (data.people || []).map((p) => `<option value="${esc(p.id)}">${esc(p.name)}</option>`).join('');
+    (data.people || [])
+      .filter((p) => p.is_active !== false)
+      .map((p) => `<option value="${esc(p.id)}">${esc(p.name)}</option>`)
+      .join('');
   els.paidBy.value = f.paid_by;
   els.settled.value = f.settled;
   els.month.value = f.month;

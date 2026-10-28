@@ -92,6 +92,7 @@ export async function deleteExpense(id) {
 export const batches = crud('/api/batches', 'batches');
 export const mortality = crud('/api/mortality', 'mortality');
 export const reminders = crud('/api/reminders', 'reminders');
+export const loans = crud('/api/loans', 'loans');
 
 function crud(url, key) {
   return {
@@ -158,6 +159,7 @@ function mockCreate(payload) {
     settled: !!payload.settled,
     expense_date: payload.expense_date,
     note: payload.note ? payload.note.trim() : null,
+    from_loan: !!payload.from_loan,
     created_at: new Date().toISOString(),
   });
   if (payload.settled && Array.isArray(payload.repayments)) {
@@ -186,6 +188,7 @@ function mockUpdate(payload) {
       settled: !!payload.settled,
       expense_date: payload.expense_date,
       note: payload.note ? payload.note.trim() : null,
+      from_loan: !!payload.from_loan,
     });
   }
   return Promise.resolve({ expense: e });
@@ -198,6 +201,7 @@ function mockDelete(id) {
 function mockNormalize(body) {
   const b = { ...body };
   if (b.count != null && b.count !== '') b.count = Number(b.count);
+  if (b.amount != null && b.amount !== '') b.amount = Number(b.amount);
   if (b.bird_count === '') b.bird_count = null;
   else if (b.bird_count != null) b.bird_count = Number(b.bird_count);
   if (b.done != null) b.done = !!b.done;

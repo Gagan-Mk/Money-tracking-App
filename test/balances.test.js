@@ -107,9 +107,17 @@ check('contributions = each person total cash in, reconciles to total spent', ()
   assert.equal(byId.p_yashas, 8700);
   assert.equal(byId.p_vg, 50000);
   const sum = rows.reduce((s, r) => s + r.contributed, 0);
-  const totalSpent = data.expenses.reduce((s, e) => s + Number(e.amount), 0);
-  assert.equal(sum, totalSpent, 'contributions must reconcile to total spent');
+  const totalNonLoan = data.expenses
+    .filter((e) => !e.from_loan)
+    .reduce((s, e) => s + Number(e.amount), 0);
+  assert.equal(sum, totalNonLoan, 'contributions reconcile to non-loan spend');
   assert.ok(rows.every((r) => r.contributed >= 0), 'nobody owes RV (no negatives)');
+});
+
+check('loan-funded bills count toward nobody', () => {
+  const loanExpense = data.expenses.find((e) => e.from_loan);
+  assert.ok(loanExpense, 'mock has a loan-funded expense');
+  assert.deepEqual(client.effectiveShares(loanExpense, []), {}, 'no one bears a loan bill');
 });
 
 check('contributionBreakdown lists the bills behind a contribution', () => {

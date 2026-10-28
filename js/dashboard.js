@@ -1,8 +1,8 @@
-import { requireSession, getData, logout, batches as batchesApi } from './api.js?v=4';
+import { requireSession, getData, logout, batches as batchesApi, loans as loansApi } from './api.js?v=4';
 import { monthTotal, contributions, contributionBreakdown } from './balances.js?v=4';
 import { inr, fmtDay, esc } from './format.js?v=4';
 import { initExpenseModal, openAddExpense } from './add-expense.js?v=4';
-import { activeBatch, deathsFor, dueLabel, kindLabel, todayStr } from './farm.js?v=4';
+import { activeBatch, deathsFor, dueLabel, kindLabel, todayStr, loanRaised, loanUsed } from './farm.js?v=4';
 import { openForm } from './modal.js?v=4';
 
 const els = {
@@ -27,6 +27,7 @@ async function render() {
   if (els.allTime) els.allTime.textContent = '₹' + inr(allTime);
 
   renderContributions(data);
+  renderLoan(data);
   renderMortality(data);
   renderUpcoming(data);
   renderRecent(data);
@@ -110,26 +111,41 @@ function renderUpcoming(data) {
 }
 
 function renderContributions(data) {
-  const rows = contributions(data.expenses, data.people, data.repayments)
-    .filter((b) => b.contributed > 0.5)
-    .sort((a, b) => b.contributed - a.contributed);
+  const all = contributions(data.expenses, data.people, data.repayments);
+  const peopleById = new Map((data.people || []).map((p) => [p.id, p]));
 
-  if (rows.length === 0) {
+  // Active members shown by name; ex-members (is_active = false) pooled as
+  // "Ex spendings" — RV still owes that money, it's just not an active founder.
+  const active = [];
+  let exTotal = 0;
+  for (const b of all) {
+    if (b.contributed <= 0.5) continue;
+    const p = peopleById.get(b.id);
+    if (p && p.is_active === false) exTotal += b.contributed;
+    else active.push(b);
+  }
+  active.sort((a, b) => b.contributed - a.contributed);
+
+  if (active.length === 0 && exTotal <= 0.5) {
     els.balances.innerHTML = `<p class="rv-muted mb-0">No contributions yet.</p>`;
     return;
   }
 
-  els.balances.innerHTML =
-    `<ul class="rv-list-plain mb-0">` +
-    rows
-      .map(
-        (b) => `<li class="rv-balance-row rv-balance-click" data-person="${esc(b.id)}" role="button" tabindex="0" title="See the bills behind this">
-          <span>${esc(b.name)}<span class="rv-chevron">›</span></span>
-          <span class="rv-num rv-owed">₹${inr(b.contributed)}</span>
-        </li>`
-      )
-      .join('') +
-    `</ul>`;
+  let html = active
+    .map(
+      (b) => `<li class="rv-balance-row rv-balance-click" data-person="${esc(b.id)}" role="button" tabindex="0" title="See the bills behind this">
+        <span>${esc(b.name)}<span class="rv-chevron">›</span></span>
+        <span class="rv-num rv-owed">₹${inr(b.contributed)}</span>
+      </li>`
+    )
+    .join('');
+  if (exTotal > 0.5) {
+    html += `<li class="rv-balance-row rv-ex-row" title="Spending from past members, still owed">
+        <span>Ex spendings</span>
+        <span class="rv-num rv-owed">₹${inr(exTotal)}</span>
+      </li>`;
+  }
+  els.balances.innerHTML = `<ul class="rv-list-plain mb-0">${html}</ul>`;
 
   els.balances.querySelectorAll('[data-person]').forEach((li) => {
     const open = () => openPersonDetail(li.dataset.person, data);
@@ -141,6 +157,111 @@ function renderContributions(data) {
       }
     });
   });
+}
+
+function renderLoan(data) {
+  const card = document.getElementById('loan-card');
+  if (!card) return;
+  const raised = loanRaised(data.loans);
+  const used = loanUsed(data.expenses);
+  const remaining = raised - used;
+
+  if (raised <= 0 && used <= 0) {
+    card.innerHTML = `
+      <div class="rv-section-head mb-1"><p class="rv-eyebrow mb-0">Loan</p></div>
+      <p class="rv-muted mb-3">No loan recorded yet.</p>
+      <button class="btn rv-btn-primary rv-btn-sm" id="add-loan" type="button">+ Add loan</button>`;
+    card.querySelector('#add-loan').onclick = () => openLoanForm(null);
+    return;
+  }
+
+  card.innerHTML = `
+    <div class="rv-section-head mb-1">
+      <p class="rv-eyebrow mb-0">Loan</p>
+      <button class="rv-linkbtn" id="add-loan" type="button">+ Add</button>
+    </div>
+    <p class="rv-total rv-total-sm mb-1">₹${inr(remaining)}<span class="rv-total-unit"> left</span></p>
+    <p class="rv-muted mb-2">₹${inr(used)} used · of ₹${inr(raised)} raised</p>
+    <button class="rv-linkbtn" id="loan-detail" type="button">Where it's used →</button>`;
+  card.querySelector('#add-loan').onclick = () => openLoanForm(null);
+  card.querySelector('#loan-detail').onclick = () => openLoanDetail(data);
+}
+
+function openLoanForm(loan) {
+  openForm({
+    title: loan ? 'Edit loan' : 'Add loan',
+    submitLabel: loan ? 'Save' : 'Add loan',
+    fields: [
+      { name: 'amount', label: 'Loan amount (₹)', type: 'number', min: 1, value: loan?.amount ?? '', required: true, placeholder: 'e.g. 50000' },
+      { name: 'raised_on', label: 'Date raised', type: 'date', value: loan?.raised_on || todayStr() },
+      { name: 'source', label: 'Source (optional)', value: loan?.source || '', placeholder: 'e.g. Bank / family' },
+    ],
+    onSubmit: async (v) => {
+      if (!v.amount || Number(v.amount) <= 0) throw new Error('Enter a loan amount.');
+      const payload = { amount: v.amount, raised_on: v.raised_on, source: v.source };
+      if (loan) await loansApi.update({ id: loan.id, ...payload });
+      else await loansApi.create(payload);
+      await render();
+    },
+  });
+}
+
+function openLoanDetail(data) {
+  ensureDetailModal();
+  const raised = loanRaised(data.loans);
+  const used = loanUsed(data.expenses);
+  const remaining = raised - used;
+
+  const usedExpenses = (data.expenses || [])
+    .filter((e) => e.from_loan)
+    .sort((a, b) => b.expense_date.localeCompare(a.expense_date));
+  const loanEntries = (data.loans || [])
+    .slice()
+    .sort((a, b) => String(b.raised_on || '').localeCompare(String(a.raised_on || '')));
+
+  const usedHTML = usedExpenses
+    .map((e) => detailLine(e.name, fmtDay(e.expense_date), '₹' + inr(e.amount)))
+    .join('');
+  const raisedHTML = loanEntries
+    .map(
+      (l) => `<li class="rv-row-block">
+        <div class="rv-row-line">
+          <p class="rv-row-title mb-0">${esc(l.source || 'Loan')}</p>
+          <span class="rv-num">₹${inr(l.amount)}</span>
+        </div>
+        <p class="rv-row-sub mb-0 mt-1">${esc(fmtDay(l.raised_on))}</p>
+        <div class="rv-row-actions">
+          <button class="rv-chip" data-loan-edit="${esc(l.id)}" type="button">Edit</button>
+          <button class="rv-chip rv-chip-danger" data-loan-del="${esc(l.id)}" type="button">Delete</button>
+        </div>
+      </li>`
+    )
+    .join('');
+
+  detailEl.querySelector('#rvDetailTitle').textContent = 'Loan';
+  detailEl.querySelector('#rvDetailBody').innerHTML = `
+    <div class="rv-detail-net rv-owed">₹${inr(remaining)} left</div>
+    <p class="rv-detail-formula">₹${inr(used)} used of ₹${inr(raised)} raised.</p>
+    ${detailSection('Where it was used', usedHTML, 'No loan-funded bills yet.')}
+    ${detailSection('Loans raised', raisedHTML, 'No loans recorded.')}
+  `;
+
+  detailEl.querySelectorAll('[data-loan-edit]').forEach((btn) => {
+    btn.onclick = () => {
+      detailModal.hide();
+      openLoanForm(loanEntries.find((l) => l.id === btn.dataset.loanEdit));
+    };
+  });
+  detailEl.querySelectorAll('[data-loan-del]').forEach((btn) => {
+    btn.onclick = async () => {
+      if (!confirm('Delete this loan entry?')) return;
+      await loansApi.remove(btn.dataset.loanDel);
+      detailModal.hide();
+      await render();
+    };
+  });
+
+  detailModal.show();
 }
 
 function renderRecent(data) {
@@ -155,7 +276,7 @@ function renderRecent(data) {
       <li class="rv-row">
         <div>
           <p class="rv-row-title mb-0">${esc(e.name)}</p>
-          <p class="rv-row-sub mb-0">${fmtDay(e.expense_date)}${e.settled ? '' : ' · deferred'}</p>
+          <p class="rv-row-sub mb-0">${fmtDay(e.expense_date)}${e.from_loan ? ' · loan' : e.settled ? '' : ' · deferred'}</p>
         </div>
         <span class="rv-num">₹${inr(e.amount)}</span>
       </li>`
