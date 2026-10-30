@@ -72,7 +72,14 @@
           <option value="false">Deferred only</option>
           <option value="true">Settled only</option>
         </select>
-        <input id="f-month" type="month" class="form-control" aria-label="Filter by single month" />
+        <input
+          id="f-search"
+          type="search"
+          class="form-control rv-search"
+          placeholder="Search expenses…"
+          aria-label="Search expenses"
+          autocomplete="off"
+        />
         <div class="dropdown rv-months-dd">
           <button
             id="f-months-btn"

@@ -259,6 +259,14 @@
   flex: 1 1 auto;
   min-width: 8.5rem;
 }
+.rv-filters .rv-search {
+  flex: 2 1 12rem;
+}
+/* Dark-theme the search field's clear (×) button */
+.rv-search::-webkit-search-cancel-button {
+  filter: invert(0.7);
+  cursor: pointer;
+}
 
 /* Multi-month dropdown filter */
 .rv-months-dd {

@@ -8,7 +8,7 @@ const round2 = (n) => Math.round(n * 100) / 100;
 const els = {
   paidBy: document.getElementById('f-paidby'),
   settled: document.getElementById('f-settled'),
-  month: document.getElementById('f-month'),
+  search: document.getElementById('f-search'),
   summary: document.getElementById('ledger-summary'),
   list: document.getElementById('ledger-list'),
 };
@@ -24,14 +24,14 @@ function readFilters() {
   return {
     paid_by: p.get('paid_by') || '',
     settled: p.get('settled') || '',
-    month: p.get('month') || '',
+    q: p.get('q') || '',
     months: (p.get('months') || '').split(',').filter(Boolean),
   };
 }
 
 function writeFilters(f) {
   const p = new URLSearchParams(location.search);
-  ['paid_by', 'settled', 'month'].forEach((k) => (f[k] ? p.set(k, f[k]) : p.delete(k)));
+  ['paid_by', 'settled', 'q'].forEach((k) => (f[k] ? p.set(k, f[k]) : p.delete(k)));
   if (f.months && f.months.length) p.set('months', f.months.join(','));
   else p.delete('months');
   history.replaceState(null, '', location.pathname + (p.toString() ? '?' + p.toString() : ''));
@@ -41,16 +41,14 @@ function writeFilters(f) {
 // calculation in buildRows, not a plain row filter).
 function applyBaseFilters(expenses, f) {
   const monthSet = new Set(f.months || []);
+  const q = (f.q || '').trim().toLowerCase();
   return expenses.filter((e) => {
     if (f.settled === 'true' && !e.settled) return false;
     if (f.settled === 'false' && e.settled) return false;
-    if (f.month) {
-      const [y, m] = f.month.split('-').map(Number);
-      const d = new Date(e.expense_date);
-      if (d.getFullYear() !== y || d.getMonth() + 1 !== m) return false;
-    }
     // Multi-month filter (empty = all months)
     if (monthSet.size && !monthSet.has(monthKey(e.expense_date))) return false;
+    // Text search over expense name + note
+    if (q && !`${e.name || ''} ${e.note || ''}`.toLowerCase().includes(q)) return false;
     return true;
   });
 }
@@ -197,19 +195,19 @@ function populateFilters(data) {
       .join('');
   els.paidBy.value = f.paid_by;
   els.settled.value = f.settled;
-  els.month.value = f.month;
+  els.search.value = f.q;
 
   const onChange = () => {
     const next = readFilters(); // keep the multi-month selection
     next.paid_by = els.paidBy.value;
     next.settled = els.settled.value;
-    next.month = els.month.value;
+    next.q = els.search.value;
     writeFilters(next);
     render();
   };
   els.paidBy.addEventListener('change', onChange);
   els.settled.addEventListener('change', onChange);
-  els.month.addEventListener('change', onChange);
+  els.search.addEventListener('input', onChange); // live search as you type
 }
 
 // Build the "Months" multi-select from the months present in the data.
